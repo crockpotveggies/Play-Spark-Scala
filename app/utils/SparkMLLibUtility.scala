@@ -1,5 +1,7 @@
 package utils
 
+import play.api.Logger
+
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 
@@ -9,16 +11,20 @@ import org.apache.spark.mllib.classification.NaiveBayes
 
 object SparkMLLibUtility {
 
-  def SparkMLLibExample {
+  val conf = new SparkConf(false) // skip loading external settings
+    .setMaster("local[4]") // run locally with enough threads
+    .setAppName("firstSparkApp")
+    .set("spark.logConf", "true")
+    .set("spark.driver.host", "localhost")
 
-    val conf = new SparkConf(false) // skip loading external settings
-      .setMaster("local[4]") // run locally with enough threads
-      .setAppName("firstSparkApp")
-      .set("spark.logConf", "true")
-      .set("spark.driver.host", "localhost")
-    val sc = new SparkContext(conf)
+  val context = new SparkContext(conf)
 
-    val data = sc.textFile("public/data/sample_naive_bayes_data.txt")
+  def SparkMLLibExample(fileLocation: String): Double = {
+
+    Logger.info("["+fileLocation+"] Beginning training")
+
+    // default should be "public/data/sample_naive_bayes_data.txt"
+    val data = context.textFile(fileLocation)
     val parsedData = data.map { line =>
       val parts = line.split(',')
       LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split(' ').map(_.toDouble)))
@@ -33,6 +39,10 @@ object SparkMLLibUtility {
 
     val predictionAndLabel = prediction.zip(test.map(_.label))
     val accuracy = 1.0 * predictionAndLabel.filter(x => x._1 == x._2).count() / test.count()
-    println("Accuracy = " + accuracy * 100 + "%")
+
+    Logger.info("["+fileLocation+"] Training complete")
+    Logger.info("["+fileLocation+"] Accuracy = " + accuracy * 100 + "%")
+
+    accuracy
   }
 }
